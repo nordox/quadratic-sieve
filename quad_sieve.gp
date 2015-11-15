@@ -27,7 +27,6 @@ QUAD_SIEVE() = {
 	for(i=3, #B,
 		listput(tp, TONELLI(n, B[i]));
 	);
-	print(tp);
 
 	\\ For each row check r = +-tp mod p for r=floor(sqrt(n))-M+i
 	\\ for all primes in B
@@ -35,7 +34,8 @@ QUAD_SIEVE() = {
 		r = floor(sqrt(n)) - M + i;
 		for(j=3, #B,
 			if( (r % B[j]) == tp[j-2][1] || (r % B[j]) == tp[j-2][2],
-				S[i, j] = floor( 0.5 + log(B[j]) );
+				\\ add extra value
+				S[i, j] = S[i, j] + floor( 0.5 + log(B[j]) );
 			);
 		);
 	);
@@ -66,3 +66,4 @@ BUILD_FACTOR_BASE(n) =  {
 
 	return(factor_base);
 }
+

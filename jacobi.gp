@@ -1,35 +1,36 @@
 \\ Modification of the Legendre/Jacobi symbol program
 
 JACOBI(a, m) = {
+	local(t, c, temp);
     a = a % m;
     t = 1;
    
     while(a != 0,
-        c = 0;
+	c = 0;
 
-        while(a % 2 == 0,
-            a = a/2;
-            c = 1 - c;
-        );
+	while(a % 2 == 0,
+	    a = a/2;
+	    c = 1 - c;
+	);
 
-        if(c == 1,
-            if((m % 8 == 3) || (m % 8 == 5),
-                t = -t;
-            );
-        );
+	if(c == 1,
+	    if((m % 8 == 3) || (m % 8 == 5),
+		t = -t;
+	    );
+	);
 
-        if((a % 4 == 3) && (m % 4 == 3),
-            t = -t;
-        );
+	if((a % 4 == 3) && (m % 4 == 3),
+	    t = -t;
+	);
 
-        temp = m;
-        m = a;
-        a = temp;
-        a = a % m;
+	temp = m;
+	m = a;
+	a = temp;
+	a = a % m;
     );
 
     if(m == 1,
-        return(t);
+	return(t);
     );
 
     return(0);
@@ -86,25 +87,4 @@ SIEVE_ERATOSTHENES(n) = {
 	);
 
     return(retval);
-}
-
-TEST() = {
-    n = 3541905253352059459794529;
-    maxN = 100;
-    res = SIEVE_ERATOSTHENES(maxN);
-    count = 0;
-   
-    z = 1;
-
-    while(count < 100,
-        while(res[z] != 0,
-            if(JACOBI(n, res[z]) == 1,
-                print(res[z]);
-                count = count + 1;
-            );
-            z = z + 1;
-        );
-        maxN = maxN + 100;
-        res = SIEVE_ERATOSTHENES(maxN);
-    );
 }

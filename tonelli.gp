@@ -24,6 +24,7 @@ TONELLI(a, p) =  {
 
 	i = 2;
 	c = (a * (b^2)) % p;
+	\\c = (a % p)*(FASTEXP(b, 2, p));
 
 	while(k <= s-1, 
 		if(c^(t*(2^(s-k-1))) % p == (p - 1),
@@ -37,8 +38,9 @@ TONELLI(a, p) =  {
 	\\ Use fast modular exponentiation
 	r1 = FASTEXP(b, i*t/2, p);
 	r2 = FASTEXP(a, (t+1)/2, p);
-	r = r1 * r2;
+	r = (r1 * r2) % p;
 
+	\\print("r: " r1, " p: ", r2);
 	return([r, p-r]);
 }
 
@@ -56,24 +58,4 @@ MAXIMAL_POWER(n, d) =  {
 	);
 
 	return([e, f]);
-}
-
-TEST1() =  {
-	read("jacobi.gp");
-	local(a, prime_list, i, result, val);
-	i = 5;
-	a = 5;
-
-	prime_list = SIEVE_ERATOSTHENES(1000);
-
-	for(i=5, #prime_list,
-		result = TONELLI(a, prime_list[i]);
-		if(type(result) == "t_STR", print(result),
-			if((result[1])^2 % prime_list[i] == a
-			&& (result[2])^2 % prime_list[i] == a,
-				print(prime_list[i], ": Success!"),
-				print(prime_list[i], ": Failure"));
-		);
-	);
-
 }
