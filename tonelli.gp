@@ -1,10 +1,10 @@
 \\ Tonelli's algorithm for finding
 \\ solutions to x^2 = a mod p for
 \\ integer a and odd prime p
+\\read("jacobi.gp");
+\\read("fast-exp.gp");
 
 TONELLI(a, p) =  {
-	read("jacobi.gp");
-	read("fast-exp.gp");
 	local(b, s, t, i, c, k, r1, r2, r);
 	b = 1;
 	k = 1;

@@ -1,20 +1,24 @@
+read("jacobi.gp");
+read("tonelli.gp");
+read("trial.gp");
+read("fast-exp.gp");
+
 QUAD_SIEVE() = {
-	read("jacobi.gp");
-	read("tonelli.gp");
-	read("trial.gp");
 	local(M, sieving_interval, B, S, tp, i, j, r, row_sum);
 
 	/* Number to be factored */
-	\\n = 135291768612457;
-	n = 4999486012441;
+	n = 135291768612457;
+	\\n = 4999486012441;
 
 	/* Choose sieving interval [-M, M] */
 	M = 100;
+	bound  = 10000;
 	sieving_interval = [-M, M];
 
 	/* Choose factor base B = {-1, 2} union {p <= B: (n/p) = 1} */
 	B = concat( 2, BUILD_FACTOR_BASE(n) );
 	B = concat( -1, B );
+	print(B);
 
 /* Sieve */
 
@@ -31,7 +35,7 @@ QUAD_SIEVE() = {
 	for(i=3, #B,
 		listput(tp, TONELLI(n, B[i]));
 	);
-	print(tp);
+	\\print(tp);
 
 	\\ For each row check r = +-tp mod p for r=floor(sqrt(n))-M+i
 	\\ for all primes in B
@@ -44,7 +48,7 @@ QUAD_SIEVE() = {
 			);
 		);
 	);
-	print(S);
+	\\print(S);
 
 /* Threshold and trial division */
 
@@ -54,14 +58,14 @@ QUAD_SIEVE() = {
 	\\ Attempt trial division of Q(r) for which rows
 	\\ of S sum to at least a certain value
 	for(i=1, 2*M,
-		row_sum = 0;
+		if(ROW_SUM(i, B) >= (0.5*log(n) + log(M) - T*log(bound)),
+			retval = TRIAL(floor(sqrt(n)) - M + i, 10000);
 
-		for(j=1, #B,
-			row_sum = row_sum + S[i, j];
-		);
-
-		if(row_sum >= (0.5*log(n) + log(M) - T*log(1229)),
-			print(floor(sqrt(n) - M + i), " ", TRIAL(floor(sqrt(n)) - M + i, 10000));
+			\\ only output return values that factor
+			\\ into primes within the factor base
+			if(retval[1][length(retval[1])] <= bound,
+				print(retval);
+			);
 		);
 	);
 	
@@ -76,7 +80,7 @@ BUILD_FACTOR_BASE(n) =  {
 
 	\\ use the sieve of eratosthenes to
 	\\ find all primes under B=1229
-	prime_list = SIEVE_ERATOSTHENES(1229);
+	prime_list = SIEVE_ERATOSTHENES(bound);
 
 	\\ build a factor base using only those primes
 	\\ in prime_list that satisfy (n/p)=1
@@ -90,3 +94,12 @@ BUILD_FACTOR_BASE(n) =  {
 	return(factor_base);
 }
 
+ROW_SUM(cur_row, factor_base) =  {
+	row_sum = 0;
+
+	for(j=1, #factor_base,
+		row_sum = row_sum + S[cur_row, j];
+	);
+
+	return(row_sum);
+}

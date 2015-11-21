@@ -1,9 +1,10 @@
+\\read("tonelli.gp");	\\ to use MAXIMAL_POWER()
+
 \\ Inputs:
 \\	n: integer to be factored
 \\	m: max bound
 
 TRIAL(n, m) =  {
-	read("tonelli.gp");	\\ to use MAXIMAL_POWER()
 	local(i, f, d, p, e);
 
 	i = 0;
