@@ -2,9 +2,10 @@ read("jacobi.gp");
 read("tonelli.gp");
 read("trial.gp");
 read("fast-exp.gp");
+read("gcd.gp");
 
 QUAD_SIEVE() = {
-	local(sieving_interval, B, b, S, tp, i, j, r, row_sum, td);
+	local(sieving_interval, B, b, S, tp, i, j, r, row_sum, td, x, y, temp);
 
 	/* Number to be factored */
 	n = 135291768612457;
@@ -12,13 +13,14 @@ QUAD_SIEVE() = {
 
 	/* Choose sieving interval [-M, M] */
 	M = 1000;
-	b  = 1229;
+	b  = 500;
 	sieving_interval = [-M, M];
 
 	/* Choose factor base B = {-1, 2} union {p <= B: (n/p) = 1} */
 	B = concat( 2, BUILD_FACTOR_BASE(n, b) );
 	B = concat( -1, B );
 	print("There are ", #B, " primes in the factor base.");
+	print(B);
 
 /* Sieve */
 
@@ -69,6 +71,8 @@ QUAD_SIEVE() = {
 			\\ only output return values that factor
 			\\ into primes within the factor base
 			if(retval[1][length(retval[1])] <= b,
+				print("num: ", abs((floor(sqrt(n)) - M + i)^2 - n));
+				print("div: ", retval);
 				listput(td_results, retval);
 			);
 		);
@@ -91,13 +95,44 @@ QUAD_SIEVE() = {
 	\\ Find perfect square
 	E_gauss_reduced = GAUSS_ELIM(E_gauss % 2, #E_copy, #E_id);
 
-	for(i=1, matsize(E)[1],
-		if(E_gauss_reduced[i+#E_copy] == 1,
-			print(E[i,]);
-		);
+	if(#E_gauss_reduced == 0,
+		return("none");
 	);
 
 /* Kraitchik test */
+
+	for(k=1, #E_gauss_reduced,
+	index_list = listcreate();
+
+	\\ recover index set
+	for(i=1, matsize(E_id)[1],
+		if(E_gauss_reduced[k][i+#E_copy] == 1,
+			listput(index_list, td_results[i]);
+		);
+	);
+
+	x = 1;
+	y = 1;
+
+	print(index_list);
+
+	for(i=1, #index_list,
+		temp = 1;
+		for(j=1, #index_list[i][1],
+			temp = temp * FASTEXP(index_list[i][1][j], index_list[i][2][j], n);
+		);
+		print("temp: ", temp);
+
+		x = (x * temp) % n;
+		y = (y * (temp + floor(sqrt(n))-M)^2) % n;
+	);
+
+	y = sqrt(y);
+	print(x);
+	print(y);
+
+	print(GCD(abs(x - y), n));
+	);
 }
 
 BUILD_FACTOR_BASE(n, b) =  {
@@ -120,6 +155,8 @@ BUILD_FACTOR_BASE(n, b) =  {
 }
 
 ROW_SUM(cur_row, factor_base_size) =  {
+	local(row_sum);
+
 	row_sum = 0;
 
 	for(j=1, factor_base_size,
@@ -134,15 +171,15 @@ ROW_SUM(cur_row, factor_base_size) =  {
 PR(row, col, factor_base, td) =  {
 	\\ First value 1 if Q(r) is negative
 	if(col == 1,
-		if( (floor(sqrt(n)) - M + row)^2 - n < 0,
+		/*if( (floor(sqrt(n)) - M + row)^2 - n < 0,
 			return(1),
 			return(0);
-		);
+		);*/
+	return(1);
 	);
 
 	for(i=1, length(td[row][1]),
 		if(factor_base[col] == td[row][1][i],
-			\\print(td[row][1][i]);
 			return(td[row][2][i]);
 		);
 	);
@@ -158,43 +195,46 @@ IS_ZERO_ROW(row, size, mat) =  {
 		);
 
 		if(j == size,
+			print("h");
 			print(mat[i,]);
 		);
 	);
 }
 
-\\ Row reduce using Gaussian elimination technique described in Bressoud
+\\ Row reduce using Gaussian elimination technique described by Bressoud
 GAUSS_ELIM(mat, E_length, id_length) =  {
-	local(mat_local, row, col);
+	local(mat_local, row, cur_row, col, all_zero, ret_list);
+
 	mat_local = mat;
 	row = 1;
-	cur_row = 1;
+	cur_row = 1;	\\ useless atm
 	col = E_length;
+	ret_list = listcreate();
 
-	for(k=1, E_length,
-		\\ Start at the end of the factorization matrix and find
-		\\ the first row where the specified column is 1
+	while(col != 0,
+		\\ Start at the end of the factorization matrix and look
+		\\ for the first row where the specified column is 1
 		row = FIND_ONE(mat_local, cur_row, col);
 
+		\\ found one
 		if(row != 0,
 			cur_row = row;
 			\\ add the row modulo 2 to all succeeding rows
 			\\ with a 1 in the column
 			for(i=row+1, matsize(mat_local)[1],
 				if(mat_local[i, col] == 1,
-					mat_local[i,] = ADD_ONE(mat_local[row,], mat_local[i,], #E_copy);
+					mat_local[i,] = ADD_ROWS(mat_local[row,], mat_local[i,]);
 
 					\\ is the first part of the row all 0's?
 					all_zero = 1;
 					for(j=1, #E_copy,
-						if(mat_local[i, j] == 1,
+						if(mat_local[i, j] != 0,
 							all_zero = 0;
 						);
 					);
 
 					if(all_zero == 1,
-						print("h");
-						return(mat_local[i,]);
+						listput(ret_list, mat_local[i,]);
 					);
 				);
 			);
@@ -210,8 +250,11 @@ GAUSS_ELIM(mat, E_length, id_length) =  {
 		print(mat_local[i,]);
 	);*/
 
+	return(ret_list);
+
 }
 
+\\ find first row in matrix with a 1 in the specified column
 FIND_ONE(mat, start_row, col) =  {
 	for(i=1, matsize(mat)[1],
 		if(mat[i, col] == 1,
@@ -222,14 +265,15 @@ FIND_ONE(mat, start_row, col) =  {
 	return(0);
 }
 
-ADD_ONE(row, row_add, l) =  {
+\\ add row to row_add using xor
+ADD_ROWS(row, row_add) =  {
 	local(row_new);
+
 	row_new = vector(#row);
 
-	for(i=1, #row,
-		if(row[i] == row_add[i],
-			row_new[i] = 0,
-			row_new[i] = 1;
+	for(o=1, #row,
+		if(row[o] != row_add[o],
+			row_new[o] = 1;
 		);
 	);
 
