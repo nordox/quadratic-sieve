@@ -3,10 +3,12 @@ read("tonelli.gp");
 read("trial.gp");
 read("fast-exp.gp");
 read("gcd.gp");
+read("gauss.gp");
+read("kraitchik.gp");
 
 QUAD_SIEVE() = {
 	local(sieving_interval, B, b, S, tonelli_results, r, row_sum, trial_div_results,
-		T, trial_div_ret, E, E_copy, E_gauss_reduced, x, y, x_list, in_the_list, gcd_val);
+		T, trial_div_ret, E, E_copy, E_gauss_reduced, kr, x, y, gcd_val);
 
 	n = 135291768612457;	\\ number to be factored (global)
 	\\n = 4999486012441;
@@ -92,61 +94,12 @@ QUAD_SIEVE() = {
 
 /* Kraitchik test */
 
+	\\ go through the zero rows and perform Kraitchik test on the
+	\\ second part of the row to try to find a factor
 	for(k=1, #E_gauss_reduced,
-		index_list = List();
-		x_list = List();	\\ holds [base, exponent] for each distinct prime in the factorization
-		listput(x_list, [2, 0]); \\ initialize list with something
-		x = 1;
-		y = 1;
-
-		\\ recover index set
-		for(i=1, matsize(E_id)[1],
-			if(E_gauss_reduced[k][i+#E] == 1,
-				listput(index_list, trial_div_results[i]);
-			);
-		);
-
-		\\ populate x_list. first go through all entries of index_list
-		for(i=1, #index_list,
-			print(index_list[i]);
-			\\ for each entry, go through all the prime bases
-			for(j=1, #index_list[i][2][1],
-				\\ go through x_list to check if base is already in the list
-				for(z=1, #x_list,
-					in_the_list = 0;
-
-					\\ base is in the list
-					if(x_list[z][1] == index_list[i][2][1][j],
-						\\ update exponent
-						x_list[z][2] += index_list[i][2][2][j];
-						in_the_list = 1;
-						break;
-					);
-				);
-
-				\\ not in the list, so add it
-				if(in_the_list == 0,
-					listput(x_list, [index_list[i][2][1][j], index_list[i][2][2][j]]);
-				);
-			);
-		);
-		print(x_list);
-
-		\\ go through x_list and divide all exponents by 2
-		for(i=1, #x_list,
-			x_list[i][2] = x_list[i][2]/2;
-		);
-
-		\\ multiply to get x
-		for(i=1, #x_list,
-			x = (x * x_list[i][1]^x_list[i][2])%n;
-		);
-
-		\\ multiply to get y
-		for(i=1, #index_list,
-			y = ((y%n) * ((index_list[i][1] + floor(sqrt(n))-M) % n));
-			y = y % n;
-		);
+		kr = KRAITCHIK(E_gauss_reduced[k]);
+		x = kr[1];
+		y = kr[2];
 
 		print("x: ", x);
 		print("y: ", y);
@@ -211,104 +164,5 @@ CREATE_EXPONENT_MATRIX(row, col, factor_base, td) =  {
 	);
 
 	return(0);
-}
-
-\\ Check if the row has all 0's
-IS_ZERO_ROW(row, size, mat) =  {
-	for(j=1, size,
-		if(mat[i, j] != 0,
-			break;
-		);
-
-		if(j == size,
-			print("h");
-			print(mat[i,]);
-		);
-	);
-}
-
-\\ Row reduce using Gaussian elimination technique described by Bressoud
-GAUSS_ELIM(mat, E_length) =  {
-	local(mat_local, mat_new, counter, row, col, all_zero, ret_list);
-
-	mat_local = mat;
-	row = 1;
-	col = E_length;
-	ret_list = List();	\\ holds rows where the first part is all zero
-
-	while(col != 0,
-		\\ Start at the end of the factorization matrix and look
-		\\ for the first row where the specified column is 1
-		row = FIND_ONE(mat_local, col);
-
-		\\ found one
-		if(row != 0,
-			\\ add the row modulo 2 to all succeeding rows
-			\\ with a 1 in the column
-			for(i=row+1, matsize(mat_local)[1],
-				if(mat_local[i, col] == 1,
-					mat_local[i,] = ADD_ROWS(mat_local[row,], mat_local[i,]);
-
-					\\ is the first part of the row all 0's?
-					all_zero = 1;
-
-					for(j=1, #E,
-						if(mat_local[i, j] != 0,
-							all_zero = 0;
-						);
-					);
-
-					\\ all zero, add to list
-					if(all_zero == 1,
-						listput(ret_list, mat_local[i,]);
-					);
-				);
-			);
-
-			\\ we are done with the row, so remove it
-			/*mat_new = matrix(matsize(mat_local)[1]-1, matsize(mat_local)[2]);
-			counter = 1;
-			for(i=1, matsize(mat_local)[1],
-				if(i != row,
-					mat_new[counter,] = mat_local[i,];
-					counter++;
-				);
-			);
-			mat_local = mat_new;*/
-
-			mat_local[row,] = vector(#mat_local, i, 0);
-		);
-
-		col--;
-	);
-
-	return(ret_list);
-
-}
-
-\\ find first row in matrix with a 1 in the specified column
-FIND_ONE(mat, col) =  {
-	for(i=1, matsize(mat)[1],
-		if(mat[i, col] == 1,
-			return(i);
-		);
-	);
-
-	return(0);
-}
-
-\\ add row to row_add using xor
-ADD_ROWS(row, row_add) =  {
-	local(row_new);
-
-	row_new = vector(#row);
-
-	for(o=1, #row,
-		if(row[o] != row_add[o],
-			row_new[o] = 1;
-		);
-	);
-
-	return(row_new);
 }
 
