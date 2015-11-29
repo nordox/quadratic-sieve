@@ -5,53 +5,49 @@ read("fast-exp.gp");
 read("gcd.gp");
 
 QUAD_SIEVE() = {
-	local(sieving_interval, B, b, S, tp, i, j, r, row_sum, td_results, T, retval, x, y, temp, g);
+	local(sieving_interval, B, b, S, tonelli_results, r, row_sum, trial_div_results,
+		T, trial_div_ret, E, E_copy, E_gauss_reduced, x, y, x_list, in_the_list, gcd_val);
 
-	/* Number to be factored */
-	n = 135291768612457;
+	n = 135291768612457;	\\ number to be factored (global)
 	\\n = 4999486012441;
 
-	/* Choose sieving interval [-M, M] */
-	M = 5000;
-	b  = 500;
+	M = 5000;	\\ used for sieving interval
+	b  = 500;	\\ bound for factor base
 	sieving_interval = [-M, M];
 
-	/* Choose factor base B = {-1, 2} union {p <= B: (n/p) = 1} */
+/* Choose factor base B = {-1, 2} union {p <= b: (n/p) = 1} */
+
 	B = concat( 2, BUILD_FACTOR_BASE(n, b) );
 	B = concat( -1, B );
 	print("There are ", #B, " primes in the factor base.");
-	print(B);
 
 /* Sieve */
 
 	\\ Create zero matrix of size 2M x B
 	S = matrix(2*M, #B);
 
-	\\ Use tonelli's algorithm to solve
-	\\ tp^2 = n mod p for all primes in
-	\\ the factor base
-	tp = listcreate();
-	listput(tp, 0);
-	listput(tp, 1);
+	tonelli_results = List();
+	listput(tonelli_results, 0);	\\ for -1
+	listput(tonelli_results, 1);	\\ for 2
 
+	\\ Use tonelli's algorithm to solvetp^2 = n mod p
+	\\ for all primes in the factor base
 	for(i=3, #B,
-		listput(tp, TONELLI(n, B[i]));
+		listput(tonelli_results, TONELLI(n, B[i]));
 	);
-	print("tp: ", " ", tp);
 
-	\\ For each row check r = +-tp mod p for r=floor(sqrt(n))-M+i
-	\\ for all primes in B
+	\\ For each row check r = +-tp mod p for all primes in B
 	for(i=1, 2*M,
 		r = floor(sqrt(n)) - M + i;
 
-		\\ case for j = 2
+		\\ case for 2
 		if( r % B[2] == 1,
 			S[i, 2] = S[i, 2] + floor( 0.5 + log(B[2]) );
 		);
 
 		for(j=3, #B,
-			if( (r % B[j]) == tp[j][1] || (r % B[j]) == tp[j][2],
-				\\ add extra value
+			\\ add extra value if the entry satisfies the congruence
+			if( (r % B[j]) == tonelli_results[j][1] || (r % B[j]) == tonelli_results[j][2],
 				S[i, j] = S[i, j] + floor( 0.5 + log(B[j]) );
 			);
 		);
@@ -59,20 +55,19 @@ QUAD_SIEVE() = {
 
 /* Threshold and trial division */
 
-	\\ Choose threshold T a bit less than 2
-	T = 1.5;
-	td_results = List();
+	T = 1.5;	\\ threshold a bit less than 2
+	trial_div_results = List();
 
 	\\ Attempt trial division of Q(r) for which rows
 	\\ of S sum to at least a certain value
 	for(i=1, 2*M,
 		if(ROW_SUM(S[i,]) >= (0.5*log(n) + log(M) - T*log(b)),
-			retval = TRIAL(abs((floor(sqrt(n)) - M + i)^2 - n), 10000);
+			trial_div_ret = TRIAL(abs((floor(sqrt(n)) - M + i)^2 - n), 10000);
 
-			\\ only output return values that factor
-			\\ into primes within the factor base
-			if(retval[1][#retval[1]] <= b,
-				listput(td_results, [i, retval]);
+			\\ Store index along with result from trial division. Only keep
+			\\ return values that factor into primes within the factor base
+			if(trial_div_ret[1][#trial_div_ret[1]] <= b,
+				listput(trial_div_results, [i, trial_div_ret]);
 			);
 		);
 	);
@@ -80,89 +75,87 @@ QUAD_SIEVE() = {
 /* Gaussian elimination */
 
 	\\ Record full factorizations
-	E = matrix(length(td_results), length(B), i, j, PR(i, j, B, td_results));
+	E = matrix(#trial_div_results, #B, i, j, CREATE_EXPONENT_MATRIX(i, j, B, trial_div_results));
 
-	\\ Make copy of full factorization matrix
-	E_copy = E;
+	\\ Create identity matrix
+	E_id = matid(#trial_div_results);
 
-	\\ Create identity matrix of length B x B
-	E_id = matid(length(td_results));
+	\\ Adjoin identity matrix to the exponent matrix
+	E_copy = concat(E, E_id);
 
-	\\ Adjoin identity matrix
-	E_gauss = concat(E_copy, E_id);
-
-	\\ Find perfect square
-	E_gauss_reduced = GAUSS_ELIM(E_gauss % 2, #E_copy, #E_id);
+	\\ Find perfect squares
+	E_gauss_reduced = GAUSS_ELIM(E_copy % 2, #E);
 
 	if(#E_gauss_reduced == 0,
-		return("none");
+		return("Can't find any factors");
 	);
 
 /* Kraitchik test */
 
 	for(k=1, #E_gauss_reduced,
-		index_list = listcreate();
-
-		\\ recover index set
-		for(i=1, matsize(E_id)[1],
-			if(E_gauss_reduced[k][i+#E_copy] == 1,
-				listput(index_list, td_results[i]);
-			);
-		);
-
+		index_list = List();
+		x_list = List();	\\ holds [base, exponent] for each distinct prime in the factorization
+		listput(x_list, [2, 0]); \\ initialize list with something
 		x = 1;
 		y = 1;
 
-\\ testing \\\\\\\\
-		holder_list = listcreate();
-		listput(holder_list, [2, 0]);
+		\\ recover index set
+		for(i=1, matsize(E_id)[1],
+			if(E_gauss_reduced[k][i+#E] == 1,
+				listput(index_list, trial_div_results[i]);
+			);
+		);
+
+		\\ populate x_list. first go through all entries of index_list
 		for(i=1, #index_list,
+			print(index_list[i]);
+			\\ for each entry, go through all the prime bases
 			for(j=1, #index_list[i][2][1],
-				for(z=1, #holder_list,
+				\\ go through x_list to check if base is already in the list
+				for(z=1, #x_list,
 					in_the_list = 0;
-					\\ base is already in the list
-					if(holder_list[z][1] == index_list[i][2][1][j],
-						holder_list[z][2] += index_list[i][2][2][j];
+
+					\\ base is in the list
+					if(x_list[z][1] == index_list[i][2][1][j],
+						\\ update exponent
+						x_list[z][2] += index_list[i][2][2][j];
 						in_the_list = 1;
 						break;
 					);
-
 				);
 
 				\\ not in the list, so add it
 				if(in_the_list == 0,
-					listput(holder_list, [index_list[i][2][1][j], index_list[i][2][2][j]]);
+					listput(x_list, [index_list[i][2][1][j], index_list[i][2][2][j]]);
 				);
 			);
 		);
-		print(holder_list);
+		print(x_list);
 
-		\\ go through and divide all exponents by 2
-		for(i=1, #holder_list,
-			holder_list[i][2] = holder_list[i][2]/2;
+		\\ go through x_list and divide all exponents by 2
+		for(i=1, #x_list,
+			x_list[i][2] = x_list[i][2]/2;
 		);
 
-		\\ multiply
-		for(i=1, #holder_list,
-			x = (x * holder_list[i][1]^holder_list[i][2])%n;
+		\\ multiply to get x
+		for(i=1, #x_list,
+			x = (x * x_list[i][1]^x_list[i][2])%n;
 		);
-\\\\\\
 
+		\\ multiply to get y
 		for(i=1, #index_list,
 			y = ((y%n) * ((index_list[i][1] + floor(sqrt(n))-M) % n));
+			y = y % n;
 		);
 
-		\\y = sqrt(y) % n;
-		y = y % n;
-		\\x = sqrt(x) % n;
 		print("x: ", x);
 		print("y: ", y);
 
-		g = GCD(abs(x - y), n);
-		if(g != 1 && g != n,
-			return([g, n/g]);
+		gcd_val = GCD(abs(x - y), n);
+
+		if(gcd_val != 1 && gcd_val != n,
+			return([gcd_val, n/gcd_val]);
 		);
-		print();
 	);
 }
 
@@ -170,12 +163,13 @@ BUILD_FACTOR_BASE(n, b) =  {
 	local(factor_base, prime_list, i);
 
 	\\ use the sieve of eratosthenes to
-	\\ find all primes under B=1229
+	\\ find all primes under b
 	prime_list = SIEVE_ERATOSTHENES(b);
 
 	\\ build a factor base using only those primes
 	\\ in prime_list that satisfy (n/p)=1
-	factor_base = listcreate(#prime_list);
+	factor_base = List(#prime_list);
+
 	for(i=2, #prime_list,
 		if(JACOBI(n, prime_list[i]) == 1,
 			listput(factor_base, prime_list[i]);
@@ -185,13 +179,14 @@ BUILD_FACTOR_BASE(n, b) =  {
 	return(factor_base);
 }
 
+\\ sum the columns of the input row
 ROW_SUM(cur_row) =  {
 	local(row_sum);
 
 	row_sum = 0;
 
 	for(j=1, #cur_row,
-		row_sum = row_sum + cur_row[j];
+		row_sum += cur_row[j];
 	);
 
 	return(row_sum);
@@ -199,7 +194,7 @@ ROW_SUM(cur_row) =  {
 
 \\ for each row in the full factorization matrix, returns whether
 \\ the prime at location (i, j) is a factor in corresponding column in td
-PR(row, col, factor_base, td) =  {
+CREATE_EXPONENT_MATRIX(row, col, factor_base, td) =  {
 	\\ First value 1 if Q(r) is negative
 	if(col == 1,
 		/*if( (floor(sqrt(n)) - M + row)^2 - n < 0,
@@ -233,13 +228,13 @@ IS_ZERO_ROW(row, size, mat) =  {
 }
 
 \\ Row reduce using Gaussian elimination technique described by Bressoud
-GAUSS_ELIM(mat, E_length, id_length) =  {
+GAUSS_ELIM(mat, E_length) =  {
 	local(mat_local, mat_new, counter, row, col, all_zero, ret_list);
 
 	mat_local = mat;
 	row = 1;
 	col = E_length;
-	ret_list = listcreate();
+	ret_list = List();	\\ holds rows where the first part is all zero
 
 	while(col != 0,
 		\\ Start at the end of the factorization matrix and look
@@ -256,12 +251,14 @@ GAUSS_ELIM(mat, E_length, id_length) =  {
 
 					\\ is the first part of the row all 0's?
 					all_zero = 1;
-					for(j=1, #E_copy,
+
+					for(j=1, #E,
 						if(mat_local[i, j] != 0,
 							all_zero = 0;
 						);
 					);
 
+					\\ all zero, add to list
 					if(all_zero == 1,
 						listput(ret_list, mat_local[i,]);
 					);
@@ -269,7 +266,7 @@ GAUSS_ELIM(mat, E_length, id_length) =  {
 			);
 
 			\\ we are done with the row, so remove it
-			mat_new = matrix(matsize(mat_local)[1]-1, matsize(mat_local)[2]);
+			/*mat_new = matrix(matsize(mat_local)[1]-1, matsize(mat_local)[2]);
 			counter = 1;
 			for(i=1, matsize(mat_local)[1],
 				if(i != row,
@@ -277,17 +274,13 @@ GAUSS_ELIM(mat, E_length, id_length) =  {
 					counter++;
 				);
 			);
-			mat_local = mat_new;
+			mat_local = mat_new;*/
 
-			\\mat_local[row,] = vector(#mat_local, i, 0);
+			mat_local[row,] = vector(#mat_local, i, 0);
 		);
 
 		col--;
 	);
-
-	/*for(i=1, matsize(mat_local)[1],
-		print(mat_local[i,]);
-	);*/
 
 	return(ret_list);
 
@@ -319,4 +312,3 @@ ADD_ROWS(row, row_add) =  {
 	return(row_new);
 }
 
-\\E_reduced = lift(mattranspose(matimage(mattranspose(Mod(temp, 2)))));
