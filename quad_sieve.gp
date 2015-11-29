@@ -5,14 +5,14 @@ read("fast-exp.gp");
 read("gcd.gp");
 
 QUAD_SIEVE() = {
-	local(sieving_interval, B, b, S, tp, i, j, r, row_sum, td, x, y, temp);
+	local(sieving_interval, B, b, S, tp, i, j, r, row_sum, td_results, T, retval, x, y, temp, g);
 
 	/* Number to be factored */
 	n = 135291768612457;
 	\\n = 4999486012441;
 
 	/* Choose sieving interval [-M, M] */
-	M = 1000;
+	M = 5000;
 	b  = 500;
 	sieving_interval = [-M, M];
 
@@ -30,13 +30,14 @@ QUAD_SIEVE() = {
 	\\ Use tonelli's algorithm to solve
 	\\ tp^2 = n mod p for all primes in
 	\\ the factor base
-	tp = listcreate(2*#B);
+	tp = listcreate();
 	listput(tp, 0);
 	listput(tp, 1);
 
 	for(i=3, #B,
 		listput(tp, TONELLI(n, B[i]));
 	);
+	print("tp: ", " ", tp);
 
 	\\ For each row check r = +-tp mod p for r=floor(sqrt(n))-M+i
 	\\ for all primes in B
@@ -65,15 +66,15 @@ QUAD_SIEVE() = {
 	\\ Attempt trial division of Q(r) for which rows
 	\\ of S sum to at least a certain value
 	for(i=1, 2*M,
-		if(ROW_SUM(i, #B) >= (0.5*log(n) + log(M) - T*log(b)),
+		if(ROW_SUM(S[i,]) >= (0.5*log(n) + log(M) - T*log(b)),
 			retval = TRIAL(abs((floor(sqrt(n)) - M + i)^2 - n), 10000);
 
 			\\ only output return values that factor
 			\\ into primes within the factor base
-			if(retval[1][length(retval[1])] <= b,
+			if(retval[1][#retval[1]] <= b,
 				print("num: ", abs((floor(sqrt(n)) - M + i)^2 - n));
 				print("div: ", retval);
-				listput(td_results, retval);
+				listput(td_results, [i, retval]);
 			);
 		);
 	);
@@ -102,36 +103,56 @@ QUAD_SIEVE() = {
 /* Kraitchik test */
 
 	for(k=1, #E_gauss_reduced,
-	index_list = listcreate();
+		index_list = listcreate();
 
-	\\ recover index set
-	for(i=1, matsize(E_id)[1],
-		if(E_gauss_reduced[k][i+#E_copy] == 1,
-			listput(index_list, td_results[i]);
+		\\ recover index set
+		for(i=1, matsize(E_id)[1],
+			if(E_gauss_reduced[k][i+#E_copy] == 1,
+				listput(index_list, td_results[i]);
+			);
 		);
-	);
+
+		x = 1;
+		y = 1;
+
+		ind_list = matrix(#index_list, #B, i, j, PR(i, j, B, index_list));
+		ind_list = lift(mattranspose(matimage(mattranspose(Mod(ind_list, 2)))));
+
+		i_list = List();
+		for(i=1, matsize(ind_list)[1],
+			for(j=1, matsize(ind_list)[2],
+				if(ind_list[i, j] == 1,
+					x = x * B[j];
+				);
+			);
+		);
+x = x % n;
 
 	x = 1;
-	y = 1;
+		for(i=1, #index_list,
+			temp = 1;
 
-	print(index_list);
+			print(index_list[i]);
+			for(j=1, #index_list[i][2][1],
+				\\x = (x%n) * FASTEXP(index_list[i][2][1][j], index_list[i][2][2][j], n);
+				x = x * (index_list[i][2][1][j]^index_list[i][2][2][j]);
+			);
 
-	for(i=1, #index_list,
-		temp = 1;
-		for(j=1, #index_list[i][1],
-			temp = temp * FASTEXP(index_list[i][1][j], index_list[i][2][j], n);
+			x = (x * temp);
+			y = ((y%n) * ((index_list[i][1] + floor(sqrt(n))-M) % n));
 		);
-		print("temp: ", temp);
 
-		x = (x * temp) % n;
-		y = (y * (temp + floor(sqrt(n))-M)^2) % n;
-	);
+		x = sqrt(x) % n;
+		\\y = sqrt(y) % n;
+		y = y % n;
+		print("x: ", x);
+		print("y: ", y);
 
-	y = sqrt(y);
-	print(x);
-	print(y);
-
-	print(GCD(abs(x - y), n));
+		g = GCD(abs(x - y), n);
+		if(g != 1 && g != n,
+			return([g, n/g]);
+		);
+		print();
 	);
 }
 
@@ -154,13 +175,13 @@ BUILD_FACTOR_BASE(n, b) =  {
 	return(factor_base);
 }
 
-ROW_SUM(cur_row, factor_base_size) =  {
+ROW_SUM(cur_row) =  {
 	local(row_sum);
 
 	row_sum = 0;
 
-	for(j=1, factor_base_size,
-		row_sum = row_sum + S[cur_row, j];
+	for(j=1, #cur_row,
+		row_sum = row_sum + cur_row[j];
 	);
 
 	return(row_sum);
@@ -175,12 +196,12 @@ PR(row, col, factor_base, td) =  {
 			return(1),
 			return(0);
 		);*/
-	return(1);
+		return(1);
 	);
 
-	for(i=1, length(td[row][1]),
-		if(factor_base[col] == td[row][1][i],
-			return(td[row][2][i]);
+	for(i=1, #td[row][2][1],
+		if(factor_base[col] == td[row][2][1][i],
+			return(td[row][2][2][i]);
 		);
 	);
 
@@ -203,22 +224,20 @@ IS_ZERO_ROW(row, size, mat) =  {
 
 \\ Row reduce using Gaussian elimination technique described by Bressoud
 GAUSS_ELIM(mat, E_length, id_length) =  {
-	local(mat_local, row, cur_row, col, all_zero, ret_list);
+	local(mat_local, mat_new, counter, row, col, all_zero, ret_list);
 
 	mat_local = mat;
 	row = 1;
-	cur_row = 1;	\\ useless atm
 	col = E_length;
 	ret_list = listcreate();
 
 	while(col != 0,
 		\\ Start at the end of the factorization matrix and look
 		\\ for the first row where the specified column is 1
-		row = FIND_ONE(mat_local, cur_row, col);
+		row = FIND_ONE(mat_local, col);
 
 		\\ found one
 		if(row != 0,
-			cur_row = row;
 			\\ add the row modulo 2 to all succeeding rows
 			\\ with a 1 in the column
 			for(i=row+1, matsize(mat_local)[1],
@@ -239,8 +258,18 @@ GAUSS_ELIM(mat, E_length, id_length) =  {
 				);
 			);
 
-			\\ we are done with the row, so zero it out
-			mat_local[row,] = vector(#mat_local, i, 0);
+			\\ we are done with the row, so remove it
+			mat_new = matrix(matsize(mat_local)[1]-1, matsize(mat_local)[2]);
+			counter = 1;
+			for(i=1, matsize(mat_local)[1],
+				if(i != row,
+					mat_new[counter,] = mat_local[i,];
+					counter++;
+				);
+			);
+			mat_local = mat_new;
+
+			\\mat_local[row,] = vector(#mat_local, i, 0);
 		);
 
 		col--;
@@ -255,7 +284,7 @@ GAUSS_ELIM(mat, E_length, id_length) =  {
 }
 
 \\ find first row in matrix with a 1 in the specified column
-FIND_ONE(mat, start_row, col) =  {
+FIND_ONE(mat, col) =  {
 	for(i=1, matsize(mat)[1],
 		if(mat[i, col] == 1,
 			return(i);
