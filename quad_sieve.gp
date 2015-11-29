@@ -72,8 +72,6 @@ QUAD_SIEVE() = {
 			\\ only output return values that factor
 			\\ into primes within the factor base
 			if(retval[1][#retval[1]] <= b,
-				print("num: ", abs((floor(sqrt(n)) - M + i)^2 - n));
-				print("div: ", retval);
 				listput(td_results, [i, retval]);
 			);
 		);
@@ -115,36 +113,48 @@ QUAD_SIEVE() = {
 		x = 1;
 		y = 1;
 
-		ind_list = matrix(#index_list, #B, i, j, PR(i, j, B, index_list));
-		ind_list = lift(mattranspose(matimage(mattranspose(Mod(ind_list, 2)))));
+\\ testing \\\\\\\\
+		holder_list = listcreate();
+		listput(holder_list, [2, 0]);
+		for(i=1, #index_list,
+			for(j=1, #index_list[i][2][1],
+				for(z=1, #holder_list,
+					in_the_list = 0;
+					\\ base is already in the list
+					if(holder_list[z][1] == index_list[i][2][1][j],
+						holder_list[z][2] += index_list[i][2][2][j];
+						in_the_list = 1;
+						break;
+					);
 
-		i_list = List();
-		for(i=1, matsize(ind_list)[1],
-			for(j=1, matsize(ind_list)[2],
-				if(ind_list[i, j] == 1,
-					x = x * B[j];
+				);
+
+				\\ not in the list, so add it
+				if(in_the_list == 0,
+					listput(holder_list, [index_list[i][2][1][j], index_list[i][2][2][j]]);
 				);
 			);
 		);
-x = x % n;
+		print(holder_list);
 
-	x = 1;
+		\\ go through and divide all exponents by 2
+		for(i=1, #holder_list,
+			holder_list[i][2] = holder_list[i][2]/2;
+		);
+
+		\\ multiply
+		for(i=1, #holder_list,
+			x = (x * holder_list[i][1]^holder_list[i][2])%n;
+		);
+\\\\\\
+
 		for(i=1, #index_list,
-			temp = 1;
-
-			print(index_list[i]);
-			for(j=1, #index_list[i][2][1],
-				\\x = (x%n) * FASTEXP(index_list[i][2][1][j], index_list[i][2][2][j], n);
-				x = x * (index_list[i][2][1][j]^index_list[i][2][2][j]);
-			);
-
-			x = (x * temp);
 			y = ((y%n) * ((index_list[i][1] + floor(sqrt(n))-M) % n));
 		);
 
-		x = sqrt(x) % n;
 		\\y = sqrt(y) % n;
 		y = y % n;
+		\\x = sqrt(x) % n;
 		print("x: ", x);
 		print("y: ", y);
 
