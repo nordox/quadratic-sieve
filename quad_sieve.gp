@@ -5,23 +5,22 @@ read("fast-exp.gp");
 read("gcd.gp");
 read("gauss.gp");
 read("kraitchik.gp");
+read("hensel.gp");
 
 QUAD_SIEVE() = {
-	local(sieving_interval, B, b, S, tonelli_results, r, row_sum, trial_div_results,
-		T, trial_div_ret, E, E_copy, E_gauss_reduced, kr, x, y, gcd_val);
+	local(B, b, S, tonelli_results, r, trial_div_results,
+		T, trial_ret, E, E_copy, E_gauss_reduced, kr, x, y, gcd_val);
 
 	n = 135291768612457;	\\ number to be factored (global)
-	\\n = 4999486012441;
 
-	M = 5000;	\\ used for sieving interval
-	b  = 500;	\\ bound for factor base
-	sieving_interval = [-M, M];
+	M = 1900;	\\ sieving interval
+	b  = 60;	\\ bound for factor base
 
 /* Choose factor base B = {-1, 2} union {p <= b: (n/p) = 1} */
 
 	B = concat( 2, BUILD_FACTOR_BASE(n, b) );
 	B = concat( -1, B );
-	print("There are ", #B, " primes in the factor base.");
+	\\print("There are ", #B, " primes in the factor base.");
 
 /* Sieve */
 
@@ -57,19 +56,19 @@ QUAD_SIEVE() = {
 
 /* Threshold and trial division */
 
-	T = 1.5;	\\ threshold a bit less than 2
+	T = 0.7;	\\ threshold a bit less than 2
 	trial_div_results = List();
 
 	\\ Attempt trial division of Q(r) for which rows
 	\\ of S sum to at least a certain value
 	for(i=1, 2*M,
 		if(ROW_SUM(S[i,]) >= (0.5*log(n) + log(M) - T*log(b)),
-			trial_div_ret = TRIAL(abs((floor(sqrt(n)) - M + i)^2 - n), 10000);
+			trial_ret = TRIAL(abs((floor(sqrt(n)) - M + i)^2 - n), 397);
 
 			\\ Store index along with result from trial division. Only keep
 			\\ return values that factor into primes within the factor base
-			if(trial_div_ret[1][#trial_div_ret[1]] <= b,
-				listput(trial_div_results, [i, trial_div_ret]);
+			if(trial_ret[1][#trial_ret[1]] <= b,
+				listput(trial_div_results, [i, trial_ret]);
 			);
 		);
 	);
@@ -97,12 +96,13 @@ QUAD_SIEVE() = {
 	\\ go through the zero rows and perform Kraitchik test on the
 	\\ second part of the row to try to find a factor
 	for(k=1, #E_gauss_reduced,
-		kr = KRAITCHIK(E_gauss_reduced[k]);
+		\\print(E_gauss_reduced[k]);
+		kr = KRAITCHIK(E_gauss_reduced[k], trial_div_results);
 		x = kr[1];
 		y = kr[2];
 
-		print("x: ", x);
-		print("y: ", y);
+		\\print("x: ", x);
+		\\print("y: ", y);
 
 		gcd_val = GCD(abs(x - y), n);
 
@@ -121,7 +121,7 @@ BUILD_FACTOR_BASE(n, b) =  {
 
 	\\ build a factor base using only those primes
 	\\ in prime_list that satisfy (n/p)=1
-	factor_base = List(#prime_list);
+	factor_base = List();
 
 	for(i=2, #prime_list,
 		if(JACOBI(n, prime_list[i]) == 1,
@@ -148,12 +148,8 @@ ROW_SUM(cur_row) =  {
 \\ for each row in the full factorization matrix, returns whether
 \\ the prime at location (i, j) is a factor in corresponding column in td
 CREATE_EXPONENT_MATRIX(row, col, factor_base, td) =  {
-	\\ First value 1 if Q(r) is negative
+	\\ -1 column
 	if(col == 1,
-		/*if( (floor(sqrt(n)) - M + row)^2 - n < 0,
-			return(1),
-			return(0);
-		);*/
 		return(1);
 	);
 

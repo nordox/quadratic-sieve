@@ -1,4 +1,4 @@
-KRAITCHIK(row) =  {
+KRAITCHIK(row, trial_div_results) =  {
 	local(index_list, x_list, x, y, in_the_list);
 
 	index_list = List();
@@ -16,7 +16,7 @@ KRAITCHIK(row) =  {
 
 	\\ populate x_list. first go through all entries of index_list
 	for(i=1, #index_list,
-		print(index_list[i]);
+		\\print(index_list[i]);
 		\\ for each entry, go through all the prime bases
 		for(j=1, #index_list[i][2][1],
 			\\ go through x_list to check if base is already in the list
@@ -38,7 +38,7 @@ KRAITCHIK(row) =  {
 			);
 		);
 	);
-	print(x_list);
+	\\print(x_list);
 
 	\\ go through x_list and divide all exponents by 2
 	for(i=1, #x_list,
@@ -49,6 +49,7 @@ KRAITCHIK(row) =  {
 	\\ multiply to get x
 	for(i=1, #x_list,
 		x = ((x%n) * FASTEXP(x_list[i][1], x_list[i][2], n)) % n;
+		\\x = ((x%n) * (x_list[i][1]^x_list[i][2])%n) % n;
 	);
 
 	\\ multiply to get y

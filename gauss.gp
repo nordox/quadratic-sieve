@@ -1,9 +1,9 @@
 \\ Row reduce using Gaussian elimination technique described by Bressoud
+
 GAUSS_ELIM(mat, E_length) =  {
 	local(mat_local, mat_new, counter, row, col, all_zero, ret_list);
 
 	mat_local = mat;
-	row = 1;
 	col = E_length;
 	ret_list = List();	\\ holds rows where the first part is all zero
 
@@ -37,7 +37,7 @@ GAUSS_ELIM(mat, E_length) =  {
 			);
 
 			\\ we are done with the row, so remove it
-			/*mat_new = matrix(matsize(mat_local)[1]-1, matsize(mat_local)[2]);
+			mat_new = matrix(matsize(mat_local)[1]-1, matsize(mat_local)[2]);
 			counter = 1;
 			for(i=1, matsize(mat_local)[1],
 				if(i != row,
@@ -45,9 +45,9 @@ GAUSS_ELIM(mat, E_length) =  {
 					counter++;
 				);
 			);
-			mat_local = mat_new;*/
+			mat_local = mat_new;
 
-			mat_local[row,] = vector(#mat_local, i, 0);
+			\\mat_local[row,] = vector(#mat_local, i, 0);
 		);
 
 		col--;
