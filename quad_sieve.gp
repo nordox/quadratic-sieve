@@ -15,15 +15,18 @@ QUAD_SIEVE() = {
 
 	M = 1900;	\\ sieving interval
 	b  = 60;	\\ bound for factor base
+	print("M: ", M);
+	print("factor base bound: ", b);
 
 /* Choose factor base B = {-1, 2} union {p <= b: (n/p) = 1} */
 
 	B = concat( 2, BUILD_FACTOR_BASE(n, b) );
 	B = concat( -1, B );
-	\\print("There are ", #B, " primes in the factor base.");
+	print("There are ", #B, " primes in the factor base.");
 
 /* Sieve */
 
+	print("Begin sieving...");
 	\\ Create zero matrix of size 2M x B
 	S = matrix(2*M, #B);
 
@@ -31,7 +34,7 @@ QUAD_SIEVE() = {
 	listput(tonelli_results, 0);	\\ for -1
 	listput(tonelli_results, 1);	\\ for 2
 
-	\\ Use tonelli's algorithm to solvetp^2 = n mod p
+	\\ Use tonelli's algorithm to solve tp^2 = n mod p
 	\\ for all primes in the factor base
 	for(i=3, #B,
 		listput(tonelli_results, TONELLI(n, B[i]));
@@ -53,6 +56,7 @@ QUAD_SIEVE() = {
 			);
 		);
 	);
+	print("Sieving complete!");
 
 /* Threshold and trial division */
 
@@ -63,11 +67,13 @@ QUAD_SIEVE() = {
 	\\ of S sum to at least a certain value
 	for(i=1, 2*M,
 		if(ROW_SUM(S[i,]) >= (0.5*log(n) + log(M) - T*log(b)),
-			trial_ret = TRIAL(abs((floor(sqrt(n)) - M + i)^2 - n), 397);
+			print("Run trial division on: ", abs((floor(sqrt(n)) - M + i)^2 - n));
+			trial_ret = TRIAL(abs((floor(sqrt(n)) - M + i)^2 - n), 10000);
 
 			\\ Store index along with result from trial division. Only keep
 			\\ return values that factor into primes within the factor base
 			if(trial_ret[1][#trial_ret[1]] <= b,
+				print("	", abs((floor(sqrt(n)) - M + i)^2 - n), " is B-smooth. Store its factors along with index: ", i);
 				listput(trial_div_results, [i, trial_ret]);
 			);
 		);
@@ -101,8 +107,8 @@ QUAD_SIEVE() = {
 		x = kr[1];
 		y = kr[2];
 
-		\\print("x: ", x);
-		\\print("y: ", y);
+		print("x: ", x);
+		print("y: ", y);
 
 		gcd_val = GCD(abs(x - y), n);
 

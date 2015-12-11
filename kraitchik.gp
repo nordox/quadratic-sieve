@@ -1,6 +1,7 @@
 KRAITCHIK(row, trial_div_results) =  {
 	local(index_list, x_list, x, y, in_the_list);
 
+	print("Begin Kraitchik test..");
 	index_list = List();
 	x_list = List();	\\ holds [base, exponent] for each distinct prime in the factorization
 	listput(x_list, [2, 0]); \\ initialize list with something
@@ -16,7 +17,7 @@ KRAITCHIK(row, trial_div_results) =  {
 
 	\\ populate x_list. first go through all entries of index_list
 	for(i=1, #index_list,
-		\\print(index_list[i]);
+		print("Recover index from Gauss: ", index_list[i]);
 		\\ for each entry, go through all the prime bases
 		for(j=1, #index_list[i][2][1],
 			\\ go through x_list to check if base is already in the list
@@ -38,7 +39,7 @@ KRAITCHIK(row, trial_div_results) =  {
 			);
 		);
 	);
-	\\print(x_list);
+	print(x_list);
 
 	\\ go through x_list and divide all exponents by 2
 	for(i=1, #x_list,
@@ -56,6 +57,7 @@ KRAITCHIK(row, trial_div_results) =  {
 	for(i=1, #index_list,
 		y = ((y%n) * ((index_list[i][1] + floor(sqrt(n))-M) % n)) % n
 	);
+	print("Kraitchik test complete!");
 
 	return([x, y]);
 }

@@ -3,6 +3,7 @@
 GAUSS_ELIM(mat, E_length) =  {
 	local(mat_local, mat_new, counter, row, col, all_zero, ret_list);
 
+	print("Begin Gaussian elimination on matrix of size: ", matsize(mat)[1], " x ", matsize(mat)[2]);
 	mat_local = mat;
 	col = E_length;
 	ret_list = List();	\\ holds rows where the first part is all zero
@@ -52,6 +53,7 @@ GAUSS_ELIM(mat, E_length) =  {
 
 		col--;
 	);
+	print("Gaussian elimination complete! Found ", #ret_list, " zero rows.");
 
 	return(ret_list);
 
